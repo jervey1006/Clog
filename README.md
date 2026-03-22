@@ -40,6 +40,14 @@ Both scripts are installed to `%USERPROFILE%\.claude\` and registered as global 
 
 `PROMPT_LOG.md` and `.gitignore` are created automatically on first use.
 
+## Uninstall
+
+Double-click `uninstall.bat`.
+
+This removes the clog scripts and its hooks from your global `settings.json`. Other existing settings are preserved.
+
+Restart Claude Code to complete the uninstall.
+
 ## PROMPT_LOG.md example
 
 | Time | Prompt | Commit Hash |
