@@ -7,10 +7,9 @@ $utf8 = New-Object System.Text.UTF8Encoding $false
 # Read session_id from stdin
 $stdinRaw = [Console]::In.ReadToEnd()
 $sessionId = "default"
-try {
-    $stdinObj = $stdinRaw | ConvertFrom-Json
-    if ($stdinObj.session_id) { $sessionId = $stdinObj.session_id }
-} catch {}
+if ($stdinRaw -match '"session_id"\s*:\s*"([^"]+)"') {
+    $sessionId = $Matches[1]
+}
 
 $JF = Join-Path $tmp "clog_$sessionId.json"
 if (-not (Test-Path $JF)) { exit 0 }
