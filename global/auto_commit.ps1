@@ -67,10 +67,6 @@ if ($prevHead -and $currentHead -and $prevHead -ne $currentHead) {
     }
 }
 
-# Normal commit flow
-$status = git status --porcelain 2>$null
-if (-not $status) { exit 0 }
-
 # Auto-add PROMPT_LOG.md to .gitignore if needed
 $ignorePath = Join-Path $projectDir ".gitignore"
 if (Test-Path $ignorePath) {
@@ -85,6 +81,14 @@ if (Test-Path $ignorePath) {
 # Init PROMPT_LOG.md if not exists
 if (-not (Test-Path $LF)) {
     [System.IO.File]::WriteAllText($LF, "| Time | Prompt | Commit Hash |`r`n|:---|:---|:---|`r`n", $utf8)
+}
+
+# Normal commit flow
+$status = git status --porcelain 2>$null
+if (-not $status) {
+    # No file changes — still log the prompt with "-" as hash
+    [System.IO.File]::AppendAllText($LF, "| $DT | $MSG | - |`r`n", $utf8)
+    exit 0
 }
 
 git add -A
