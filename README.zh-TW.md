@@ -2,15 +2,15 @@
 
 [Claude Code](https://claude.ai/code) 的自動 commit 與提示詞紀錄系統。
 
-每次送出提示詞，Clog 就會自動記錄並建立一筆 git commit。執行 `git reset` 回退時，Clog 會偵測到並將受影響的紀錄以刪除線標記。
+每次送出提示詞，Clog 就會自動記錄並建立一筆 git commit。執行 `git reset` 回朔時，Clog 會偵測到並將受影響的紀錄以刪除線標記。
 
 ## 功能
 
 - 每次 Claude 回應後自動 git commit
 - Commit 訊息格式：`[YYYY-MM-DD HH:MM] 你的提示詞`
 - 將每筆提示詞記錄至 `PROMPT_LOG.md`
-- 偵測 `git reset`，並將回退的紀錄標示為 `~~刪除線~~`
-- 回退時自動附加 `[RESET]` 標記列
+- 偵測 `git reset`，並將回朔的紀錄標示為 `~~刪除線~~`
+- 回朔時自動附加 `[RESET]` 標記列
 - 適用於任何專案，無硬編碼路徑
 
 ## 系統需求
@@ -57,8 +57,8 @@ git clone https://github.com/jervey1006/Clog.git
 
 | 時間 | 提示詞 | Commit Hash |
 |:---|:---|:---|
-| 2026-03-23 10:00 | add player movement | a1b2c3d |
-| 2026-03-23 10:05 | fix jump bug | e4f5g6h |
-| ~~2026-03-23 10:10~~ | ~~bad idea~~ | ~~i7j8k9l~~ |
+| 2026-03-23 10:00 | 新增玩家移動功能 | a1b2c3d |
+| 2026-03-23 10:05 | 修正跳躍 bug | e4f5g6h |
+| ~~2026-03-23 10:10~~ | ~~糟糕的方向~~ | ~~i7j8k9l~~ |
 | 2026-03-23 10:12 | [RESET] [e4f5g6h] | - |
-| 2026-03-23 10:15 | try a different approach | m1n2o3p |
+| 2026-03-23 10:15 | 換個方式重新嘗試 | m1n2o3p |
