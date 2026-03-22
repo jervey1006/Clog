@@ -20,12 +20,33 @@ copy "%~dp0global\read_prompt.js"  "%USERPROFILE%\.claude\read_prompt.js"  /Y
 copy "%~dp0global\auto_commit.ps1" "%USERPROFILE%\.claude\auto_commit.ps1" /Y
 echo [OK] Scripts copied.
 
-:: 2. Write global settings.json (hooks for all projects)
+:: 2. Merge clog hooks into global settings.json
 powershell -ExecutionPolicy Bypass -NoProfile -Command ^
+  "$utf8 = New-Object System.Text.UTF8Encoding $false;" ^
   "$fwd = ($env:USERPROFILE + '\.claude') -replace '\\','/';" ^
-  "$s = '{\"hooks\":{\"UserPromptSubmit\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node ' + $fwd + '/read_prompt.js\"}]}],\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"powershell -ExecutionPolicy Bypass -NonInteractive -File ' + $fwd + '/auto_commit.ps1\"}]}]}}' ;" ^
-  "[System.IO.File]::WriteAllText($env:USERPROFILE + '\.claude\settings.json', $s, (New-Object System.Text.UTF8Encoding $false));"
-echo [OK] Global hooks configured.
+  "$path = $env:USERPROFILE + '\.claude\settings.json';" ^
+  "$clogHooks = @{" ^
+  "  UserPromptSubmit = @(@{ hooks = @(@{ type = 'command'; command = \"node $fwd/read_prompt.js\" }) })" ^
+  "  Stop             = @(@{ hooks = @(@{ type = 'command'; command = \"powershell -ExecutionPolicy Bypass -NonInteractive -File $fwd/auto_commit.ps1\" }) })" ^
+  "};" ^
+  "if (Test-Path $path) {" ^
+  "  $raw = [System.IO.File]::ReadAllText($path, $utf8);" ^
+  "  try { $obj = $raw | ConvertFrom-Json } catch { $obj = [pscustomobject]@{} };" ^
+  "} else { $obj = [pscustomobject]@{} };" ^
+  "if (-not $obj.hooks) { $obj | Add-Member -NotePropertyName hooks -NotePropertyValue ([pscustomobject]@{}) };" ^
+  "foreach ($event in $clogHooks.Keys) {" ^
+  "  $clogCmd = $clogHooks[$event][0].hooks[0].command;" ^
+  "  $existing = $obj.hooks.$event;" ^
+  "  $alreadyIn = $false;" ^
+  "  if ($existing) { foreach ($h in $existing) { foreach ($hh in $h.hooks) { if ($hh.command -eq $clogCmd) { $alreadyIn = $true } } } };" ^
+  "  if (-not $alreadyIn) {" ^
+  "    $newEntry = @{ hooks = @(@{ type = 'command'; command = $clogCmd }) };" ^
+  "    if ($existing) { $merged = @($existing) + @($newEntry) } else { $merged = @($newEntry) };" ^
+  "    $obj.hooks | Add-Member -NotePropertyName $event -NotePropertyValue $merged -Force;" ^
+  "  }" ^
+  "};" ^
+  "[System.IO.File]::WriteAllText($path, ($obj | ConvertTo-Json -Depth 10), $utf8);"
+echo [OK] Global hooks merged into settings.json.
 
 echo.
 echo Done! clog is active for all Claude Code projects.
