@@ -1,5 +1,7 @@
 # Clog
 
+繁體中文說明請見 [README.zh-TW.md](./README.zh-TW.md)
+
 Auto-commit and prompt logging system for [Claude Code](https://claude.ai/code).
 
 Every time you send a prompt, Clog records it and creates a git commit automatically. When you roll back with `git reset`, Clog detects it and marks the affected log entries with strikethrough.
