@@ -39,7 +39,7 @@ git clone https://github.com/jervey1006/Clog.git
 | Hook | 腳本 | 說明 |
 |---|---|---|
 | `UserPromptSubmit` | `read_prompt.js` | 將提示詞內容與當前 git HEAD 寫入暫存檔 |
-| `Stop` | `auto_commit.ps1` | 偵測回退、更新紀錄、執行 commit |
+| `Stop` | `auto_commit.ps1` | 偵測回朔、更新紀錄、執行 commit |
 
 兩個腳本會安裝至 `%USERPROFILE%\.claude\` 並註冊為全域 hooks，所有專案皆自動生效。
 
