@@ -1,6 +1,20 @@
 @echo off
 echo === clog install ===
 
+:: 0. Check git user identity
+for /f "delims=" %%i in ('git config --global user.name 2^>nul') do set GIT_NAME=%%i
+for /f "delims=" %%i in ('git config --global user.email 2^>nul') do set GIT_EMAIL=%%i
+
+if not defined GIT_NAME (
+    set /p GIT_NAME="Git user.name not set. Enter name: "
+    git config --global user.name "%GIT_NAME%"
+)
+if not defined GIT_EMAIL (
+    set /p GIT_EMAIL="Git user.email not set. Enter email: "
+    git config --global user.email "%GIT_EMAIL%"
+)
+echo [OK] Git identity: %GIT_NAME% ^<%GIT_EMAIL%^>
+
 :: 1. Copy scripts to global .claude
 copy "%~dp0global\read_prompt.js"  "%USERPROFILE%\.claude\read_prompt.js"  /Y
 copy "%~dp0global\auto_commit.ps1" "%USERPROFILE%\.claude\auto_commit.ps1" /Y

@@ -14,6 +14,12 @@ $projectDir = [System.IO.File]::ReadAllText($DF, $utf8).Trim()
 if (-not (Test-Path $projectDir)) { exit 0 }
 
 Set-Location $projectDir
+
+# Auto-init git repo if not already one
+if (-not (Test-Path (Join-Path $projectDir ".git"))) {
+    git init 2>$null
+}
+
 $LF = Join-Path $projectDir "PROMPT_LOG.md"
 $DT = Get-Date -Format "yyyy-MM-dd HH:mm"
 

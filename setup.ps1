@@ -10,6 +10,19 @@ Write-Host "=== clog setup ===" -ForegroundColor Cyan
 Write-Host "Project : $projectDir"
 Write-Host "Global  : $globalDest"
 
+# 0. 確認 git user identity
+$gitName  = git config --global user.name  2>$null
+$gitEmail = git config --global user.email 2>$null
+if (-not $gitName) {
+    $gitName = Read-Host "Git user.name 未設定，請輸入名稱"
+    git config --global user.name $gitName
+}
+if (-not $gitEmail) {
+    $gitEmail = Read-Host "Git user.email 未設定，請輸入 Email"
+    git config --global user.email $gitEmail
+}
+Write-Host "[OK] Git identity: $gitName <$gitEmail>" -ForegroundColor Green
+
 # 1. 複製全域腳本
 New-Item -ItemType Directory -Force -Path $globalDest | Out-Null
 Copy-Item "$kitDir\global\read_prompt.js"  "$globalDest\read_prompt.js"  -Force
@@ -54,7 +67,16 @@ $settings = @"
 [System.IO.File]::WriteAllText("$settingsDir\settings.json", $settings, $utf8NoBOM)
 Write-Host "[OK] .claude/settings.json created" -ForegroundColor Green
 
-# 3. 建立 PROMPT_LOG.md（若不存在）
+# 3. 確認 git repo（若不存在則 init）
+$isGit = git -C $projectDir rev-parse --git-dir 2>$null
+if (-not $isGit) {
+    git init $projectDir | Out-Null
+    Write-Host "[OK] git init completed" -ForegroundColor Green
+} else {
+    Write-Host "[--] Already a git repo, skipped git init" -ForegroundColor Yellow
+}
+
+# 4. 建立 PROMPT_LOG.md（若不存在）
 $logPath = Join-Path $projectDir "PROMPT_LOG.md"
 if (-not (Test-Path $logPath)) {
     [System.IO.File]::WriteAllText($logPath, "| Time | Prompt | Commit Hash |`r`n|:---|:---|:---|`r`n", $utf8NoBOM)
@@ -63,7 +85,7 @@ if (-not (Test-Path $logPath)) {
     Write-Host "[--] PROMPT_LOG.md already exists, skipped" -ForegroundColor Yellow
 }
 
-# 4. 確認 .gitignore 包含 PROMPT_LOG.md
+# 5. 確認 .gitignore 包含 PROMPT_LOG.md
 $ignorePath = Join-Path $projectDir ".gitignore"
 if (Test-Path $ignorePath) {
     $content = Get-Content $ignorePath -Raw
