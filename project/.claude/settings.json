@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/YOUR_USERNAME/.claude/read_prompt.js"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -NonInteractive -File C:/Users/YOUR_USERNAME/.claude/auto_commit.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}
