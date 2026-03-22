@@ -1,26 +1,28 @@
 // Hook: UserPromptSubmit
-// Saves the current prompt and project dir/HEAD to temp files.
+// Saves the current prompt and project dir/HEAD to a session-scoped temp file.
 let data = '';
 process.stdin.on('data', chunk => data += chunk);
 process.stdin.on('end', () => {
     try {
         const fs = require('fs');
+        const os = require('os');
         const { execSync } = require('child_process');
         const obj = JSON.parse(data);
+        const sessionId = obj.session_id || 'default';
         const prompt = (obj.prompt || '').trim().replace(/\r?\n/g, ' ');
         const projectDir = process.cwd().replace(/\//g, '\\');
 
-        const tmp = 'C:\\Users\\' + require('os').userInfo().username + '\\AppData\\Local\\Temp\\';
-        fs.writeFileSync(tmp + 'last_prompt.txt', prompt, 'utf8');
-        fs.writeFileSync(tmp + 'last_dir.txt', projectDir, 'utf8');
-
+        let head = null;
         try {
-            const head = execSync('git rev-parse HEAD', {
+            head = execSync('git rev-parse HEAD', {
                 cwd: projectDir,
                 encoding: 'utf8',
                 stdio: ['pipe', 'pipe', 'ignore']
             }).trim();
-            fs.writeFileSync(tmp + 'last_head.txt', head, 'utf8');
         } catch(e) {}
+
+        const tmp = os.tmpdir();
+        const file = require('path').join(tmp, `clog_${sessionId}.json`);
+        fs.writeFileSync(file, JSON.stringify({ prompt, dir: projectDir, head }), 'utf8');
     } catch(e) {}
 });

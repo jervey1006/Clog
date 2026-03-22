@@ -1,16 +1,33 @@
 # Hook: Stop
-# Reads project dir from temp file — works for any project, no hardcoded paths.
+# Reads project dir from session-scoped temp file, deletes it after use.
 
 $tmp  = [System.IO.Path]::GetTempPath()
 $utf8 = New-Object System.Text.UTF8Encoding $false
 
-$PF = Join-Path $tmp "last_prompt.txt"
-$HF = Join-Path $tmp "last_head.txt"
-$DF = Join-Path $tmp "last_dir.txt"
+# Read session_id from stdin
+$stdinRaw = [Console]::In.ReadToEnd()
+$sessionId = "default"
+try {
+    $stdinObj = $stdinRaw | ConvertFrom-Json
+    if ($stdinObj.session_id) { $sessionId = $stdinObj.session_id }
+} catch {}
 
-# Read project dir
-if (-not (Test-Path $DF)) { exit 0 }
-$projectDir = [System.IO.File]::ReadAllText($DF, $utf8).Trim()
+$JF = Join-Path $tmp "clog_$sessionId.json"
+if (-not (Test-Path $JF)) { exit 0 }
+
+# Read and immediately delete the session temp file
+$sessionData = $null
+try {
+    $sessionData = [System.IO.File]::ReadAllText($JF, $utf8) | ConvertFrom-Json
+} catch {}
+Remove-Item $JF -ErrorAction SilentlyContinue
+
+if (-not $sessionData) { exit 0 }
+
+$projectDir = $sessionData.dir
+$prevHead   = $sessionData.head
+$MSG        = if ($sessionData.prompt) { $sessionData.prompt } else { "auto commit" }
+
 if (-not (Test-Path $projectDir)) { exit 0 }
 
 Set-Location $projectDir
@@ -22,10 +39,6 @@ if (-not (Test-Path (Join-Path $projectDir ".git"))) {
 
 $LF = Join-Path $projectDir "PROMPT_LOG.md"
 $DT = Get-Date -Format "yyyy-MM-dd HH:mm"
-
-# Read previous HEAD
-$prevHead = $null
-if (Test-Path $HF) { $prevHead = (Get-Content $HF -Raw).Trim() }
 
 # Get current HEAD
 $currentHead = $null
@@ -57,12 +70,6 @@ if ($prevHead -and $currentHead -and $prevHead -ne $currentHead) {
 # Normal commit flow
 $status = git status --porcelain 2>$null
 if (-not $status) { exit 0 }
-
-$MSG = "auto commit"
-if (Test-Path $PF) {
-    $c = [System.IO.File]::ReadAllText($PF, $utf8).Trim()
-    if ($c) { $MSG = $c }
-}
 
 # Auto-add PROMPT_LOG.md to .gitignore if needed
 $ignorePath = Join-Path $projectDir ".gitignore"
