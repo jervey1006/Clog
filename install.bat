@@ -26,7 +26,7 @@ powershell -ExecutionPolicy Bypass -NoProfile -Command ^
   "$fwd = ($env:USERPROFILE + '\.claude') -replace '\\','/';" ^
   "$path = $env:USERPROFILE + '\.claude\settings.json';" ^
   "$clogHooks = @{" ^
-  "  UserPromptSubmit = @(@{ hooks = @(@{ type = 'command'; command = \"node $fwd/read_prompt.js\" }) })" ^
+  "  UserPromptSubmit = @(@{ hooks = @(@{ type = 'command'; command = \"node $fwd/read_prompt.js\" }) });" ^
   "  Stop             = @(@{ hooks = @(@{ type = 'command'; command = \"powershell -ExecutionPolicy Bypass -NonInteractive -File $fwd/auto_commit.ps1\" }) })" ^
   "};" ^
   "if (Test-Path $path) {" ^
