@@ -1,11 +1,12 @@
 // Hook: UserPromptSubmit
-// Saves the current prompt and project dir/HEAD to a session-scoped temp file.
+// Appends the current prompt and project dir/HEAD to a session-scoped temp file (array).
 let data = '';
 process.stdin.on('data', chunk => data += chunk);
 process.stdin.on('end', () => {
     try {
         const fs = require('fs');
         const os = require('os');
+        const path = require('path');
         const { execSync } = require('child_process');
         const obj = JSON.parse(data);
         const sessionId = obj.session_id || 'default';
@@ -22,7 +23,25 @@ process.stdin.on('end', () => {
         } catch(e) {}
 
         const tmp = os.tmpdir();
-        const file = require('path').join(tmp, `clog_${sessionId}.json`);
-        fs.writeFileSync(file, JSON.stringify({ prompt, dir: projectDir, head }), 'utf8');
-    } catch(e) {}
+        const file = path.join(tmp, `clog_${sessionId}.json`);
+
+        // Read existing entries to avoid overwriting previous prompts in the same session
+        let entries = [];
+        try {
+            const existing = fs.readFileSync(file, 'utf8');
+            const parsed = JSON.parse(existing);
+            entries = Array.isArray(parsed) ? parsed : [parsed];
+        } catch(e) {}
+
+        entries.push({ prompt, dir: projectDir, head });
+        fs.writeFileSync(file, JSON.stringify(entries), 'utf8');
+    } catch(e) {
+        try {
+            const fs = require('fs');
+            const os = require('os');
+            const path = require('path');
+            const errFile = path.join(os.tmpdir(), 'clog_error.log');
+            fs.appendFileSync(errFile, `[${new Date().toISOString()}] read_prompt error: ${e.message}\n`);
+        } catch(e2) {}
+    }
 });
