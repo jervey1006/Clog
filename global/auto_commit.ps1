@@ -1,31 +1,39 @@
 # Hook: Stop
-# Reads project dir from session-scoped temp file, deletes it after use.
+# Reads project dir from session-scoped temp file (array), deletes it after use.
 
 $tmp  = [System.IO.Path]::GetTempPath()
 $utf8 = New-Object System.Text.UTF8Encoding $false
 
-# Read session_id from stdin
+# Read session_id from stdin using ConvertFrom-Json (consistent with read_prompt.js)
 $stdinRaw = [Console]::In.ReadToEnd()
 $sessionId = "default"
-if ($stdinRaw -match '"session_id"\s*:\s*"([^"]+)"') {
-    $sessionId = $Matches[1]
+try {
+    $stdinObj = $stdinRaw | ConvertFrom-Json -ErrorAction Stop
+    if ($stdinObj.session_id) { $sessionId = $stdinObj.session_id }
+} catch {
+    # Fallback to regex if JSON parse fails
+    if ($stdinRaw -match '"session_id"\s*:\s*"([^"]+)"') {
+        $sessionId = $Matches[1]
+    }
 }
 
 $JF = Join-Path $tmp "clog_$sessionId.json"
 if (-not (Test-Path $JF)) { exit 0 }
 
 # Read and immediately delete the session temp file
-$sessionData = $null
+$entries = $null
 try {
-    $sessionData = [System.IO.File]::ReadAllText($JF, $utf8) | ConvertFrom-Json
+    $raw = [System.IO.File]::ReadAllText($JF, $utf8)
+    $parsed = $raw | ConvertFrom-Json
+    $entries = if ($parsed -is [array]) { $parsed } else { @($parsed) }
 } catch {}
 Remove-Item $JF -ErrorAction SilentlyContinue
 
-if (-not $sessionData) { exit 0 }
+if (-not $entries -or $entries.Count -eq 0) { exit 0 }
 
-$projectDir = $sessionData.dir
-$prevHead   = $sessionData.head
-$MSG        = if ($sessionData.prompt) { $sessionData.prompt } else { "auto commit" }
+# Use first entry's HEAD for reset detection, last entry's dir as project
+$projectDir = $entries[-1].dir
+$prevHead   = $entries[0].head
 
 if (-not (Test-Path $projectDir)) { exit 0 }
 
@@ -82,11 +90,17 @@ if (-not (Test-Path $LF)) {
     [System.IO.File]::WriteAllText($LF, "| Time | Prompt | Commit Hash |`r`n|:---|:---|:---|`r`n", $utf8)
 }
 
+# Commit message uses the last (most recent) prompt
+$MSG = if ($entries[-1].prompt) { $entries[-1].prompt } else { "auto commit" }
+
 # Normal commit flow
 $status = git status --porcelain 2>$null
 if (-not $status) {
-    # No file changes — still log the prompt with "-" as hash
-    [System.IO.File]::AppendAllText($LF, "| $DT | $MSG | - |`r`n", $utf8)
+    # No file changes — log all pending prompts with "-" as hash
+    foreach ($entry in $entries) {
+        $entryMsg = if ($entry.prompt) { $entry.prompt } else { "auto commit" }
+        [System.IO.File]::AppendAllText($LF, "| $DT | $entryMsg | - |`r`n", $utf8)
+    }
     exit 0
 }
 
@@ -95,4 +109,10 @@ git commit -m "[$DT] $MSG"
 if ($LASTEXITCODE -ne 0) { exit 0 }
 
 $HASH = (git rev-parse --short HEAD 2>$null).Trim()
-[System.IO.File]::AppendAllText($LF, "| $DT | $MSG | $HASH |`r`n", $utf8)
+
+# Log all pending prompts; only the last one (which triggered the commit) gets the hash
+for ($i = 0; $i -lt $entries.Count; $i++) {
+    $entryMsg = if ($entries[$i].prompt) { $entries[$i].prompt } else { "auto commit" }
+    $hash = if ($i -eq $entries.Count - 1) { $HASH } else { "-" }
+    [System.IO.File]::AppendAllText($LF, "| $DT | $entryMsg | $hash |`r`n", $utf8)
+}
